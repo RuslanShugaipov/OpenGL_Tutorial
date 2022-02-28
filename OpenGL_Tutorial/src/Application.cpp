@@ -10,10 +10,15 @@
 #include "VertexArray.h"
 #include "VertexBufferLayout.h"
 #include "Shader.h"
-#include "Texture.h"
 
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
+
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw.h"
+#include "imgui/imgui_impl_opengl3.h"
+
+#include "Cube.h"
 
 int main(void)
 {
@@ -24,7 +29,7 @@ int main(void)
 		return -1;
 
 	/* Create a windowed mode window and its OpenGL context */
-	window = glfwCreateWindow(960, 540, "Hello World", NULL, NULL);
+	window = glfwCreateWindow(540, 540, "OpenGL Tutorial", NULL, NULL);
 	if (!window)
 	{
 		glfwTerminate();
@@ -39,45 +44,23 @@ int main(void)
 	if (glewInit() != GLEW_OK)
 		std::cout << "Error!" << std::endl;
 
-	std::cout << glGetString(GL_VERSION) << std::endl;
 	{
-		float positions[] =
-		{
-			-0.5f, -0.5f, 0.0f, 0.0f,
-			 0.5f, -0.5f, 1.0f, 0.0f,
-			 0.5f, 0.5f, 1.0f, 1.0f,
-			-0.5f,  0.5f, 0.0f, 1.0f,
-		};
-
-		unsigned int indicies[] = {
-			0,1,2,
-			2,3,0
-
-		};
-
-		GLCall(glEnable(GL_BLEND));
-		GLCall(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+		Cube cube;
 
 		VertexArray va;
-		VertexBuffer vb(positions, 4 * 4 * sizeof(float));
+		VertexBuffer vb(cube.positions, 8 * 3 * sizeof(float));
 
 		VertexBufferLayout layout;
-		layout.Push<float>(2);
-		layout.Push<float>(2);
+		layout.Push<float>(3);
 		va.AddBuffer(vb, layout);
 
-		IndexBuffer ib(indicies, 6);
+		IndexBuffer ib(cube.indicies, 48);
 
-		glm::mat4 proj = glm::ortho(-2.0f, 2.0f, -1.5f, 1.5f, -1.0f, 1.0f);
+		glm::mat4 proj = glm::ortho(-2.0f, 2.0f, -2.0f, 2.0f, -2.0f, 2.0f);
 
 		Shader shader("res/shaders/Basic.shader");
 		shader.Bind();
-		shader.SetUniform4f("u_Color", 0.2f, 0.3f, 0.8f, 1.0f);
-		shader.SetUniformMat4f("u_MVP", proj);
-
-		Texture texture("res/textures/checkers.png");
-		texture.Bind();
-		shader.SetUniform1i("u_Texture", 0);
+		shader.SetUniform4f("u_Color", 1.0f, 0.5f, 0.5f, 1.0f);
 
 		va.Unbind();
 		vb.Unbind();
@@ -86,25 +69,48 @@ int main(void)
 
 		Renderer renderer;
 
-		float r = 0.0f;
-		float increment = 0.05f;
+		ImGui::CreateContext();
+		ImGui::StyleColorsDark();
+		ImGui_ImplGlfw_InitForOpenGL(window, true);
+		ImGui_ImplOpenGL3_Init("#version 330");
+
+		glm::vec3 translation(0.0, 0.0, 0.0);
+		float x_rotation_angle = 0;
+		float y_rotation_angle = 0;
+		float z_rotation_angle = 0;
+
 		/* Loop until the user closes the window */
 		while (!glfwWindowShouldClose(window))
 		{
 			/* Render here */
 			renderer.Clear();
 
-			shader.Bind();
-			shader.SetUniform4f("u_Color", r, 0.3f, 0.8f, 1.0f);
+			ImGui_ImplOpenGL3_NewFrame();
+			ImGui_ImplGlfw_NewFrame();
+			ImGui::NewFrame();
 
-			renderer.Draw(va, ib, shader);
+			{
+				glm::mat4 model = glm::mat4(1.0f);
+				model = glm::translate(model, translation);
+				model = glm::rotate(model, x_rotation_angle, glm::vec3(1.0, 0.0, 0.0));
+				model = glm::rotate(model, y_rotation_angle, glm::vec3(0.0, 1.0, 0.0));
+				model = glm::rotate(model, z_rotation_angle, glm::vec3(0.0, 0.0, 1.0));
 
-			if (r > 1.0f)
-				increment = -0.05f;
-			else if (r < 0.0f)
-				increment = 0.05f;
+				glm::mat4 mvp = proj * model;
+				shader.Bind();
+				shader.SetUniformMat4f("u_MVP", mvp);
+				renderer.Draw(va, ib, shader);
+			}
 
-			r += increment;
+			{
+				ImGui::SliderFloat2("TranslationA", &translation.x, -0.5f, 0.5f);
+				ImGui::SliderFloat("X rotation angle", &x_rotation_angle, 0.0f, glm::two_pi<float>());
+				ImGui::SliderFloat("Y rotation angle", &y_rotation_angle, 0.0f, glm::two_pi<float>());
+				ImGui::SliderFloat("Z rotation angle", &z_rotation_angle, 0.0f, glm::two_pi<float>());
+			}
+
+			ImGui::Render();
+			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 			/* Swap front and back buffers */
 			glfwSwapBuffers(window);
@@ -113,6 +119,11 @@ int main(void)
 			glfwPollEvents();
 		}
 	}
+
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
+
 	glfwTerminate();
 	return 0;
 }

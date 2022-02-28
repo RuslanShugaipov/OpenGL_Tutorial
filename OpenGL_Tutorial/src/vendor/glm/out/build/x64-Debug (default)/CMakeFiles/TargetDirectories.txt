@@ -1,0 +1,2 @@
+C:/OpenGL Projects/OpenGL_Tutorial/OpenGL_Tutorial/src/vendor/glm/out/build/x64-Debug (default)/CMakeFiles/edit_cache.dir
+C:/OpenGL Projects/OpenGL_Tutorial/OpenGL_Tutorial/src/vendor/glm/out/build/x64-Debug (default)/CMakeFiles/rebuild_cache.dir
